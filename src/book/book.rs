@@ -198,7 +198,6 @@ pub struct Chapter {
     /// # Header for Chapter
     /// ```
     #[serde(skip_serializing_if = "std::collections::HashMap::is_empty", default)]
-    // #[cfg_attr(feature = "frontmatter", serde(default))]
     pub frontmatter: std::collections::HashMap<String, String>,
 }
 

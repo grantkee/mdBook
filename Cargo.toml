@@ -74,3 +74,8 @@ name = "mdbook"
 [[example]]
 name = "nop-preprocessor"
 test = true
+
+[[example]]
+name = "frontmatter-feature"
+test = true
+required-features = ["frontmatter"]
