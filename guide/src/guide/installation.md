@@ -50,3 +50,10 @@ Again, make sure to add the Cargo bin directory to your `PATH`.
 If you are interested in making modifications to mdBook itself, check out the [Contributing Guide] for more information.
 
 [Contributing Guide]: https://github.com/rust-lang/mdBook/blob/master/CONTRIBUTING.md
+
+### Install with features enabled
+Some features are not included by default. To include an optional feature for mdbook, pass the features flag to the terminal command.
+
+```sh
+cargo install mdbook --features frontmatter
+```
