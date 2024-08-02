@@ -138,8 +138,7 @@ mod nop_lib {
                                 "sub_items": [],
                                 "path": "chapter_1.md",
                                 "source_path": "chapter_1.md",
-                                "parent_names": [],
-                                "data": {}
+                                "parent_names": []
                             }
                         }
                     ],

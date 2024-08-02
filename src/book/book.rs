@@ -177,9 +177,29 @@ pub struct Chapter {
     pub source_path: Option<PathBuf>,
     /// An ordered list of the names of each chapter above this one in the hierarchy.
     pub parent_names: Vec<String>,
-    /// Data that can be shared between preprocessors, accessed in the renderer
+    #[cfg(feature = "frontmatter")]
+    /// Frontmatter that can be shared between preprocessors, accessed in the renderer
     /// or accessed in the theme's `.hbs` files
-    pub data: serde_json::Map<String, serde_json::Value>,
+    ///
+    /// **Note**: Frontmatter is optional content that is included at the beginning of a chapter.
+    /// In order for frontmatter to be parsed correctly:
+    /// - must wrap frontmatter content in "+++"
+    /// - key/values are separated by ":"
+    /// - only one key/value per line
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```md
+    /// +++
+    /// author: example
+    /// more: frontmatter
+    /// +++
+    /// # Header for Chapter
+    /// ```
+    #[serde(skip_serializing_if = "std::collections::HashMap::is_empty", default)]
+    // #[cfg_attr(feature = "frontmatter", serde(default))]
+    pub frontmatter: std::collections::HashMap<String, String>,
 }
 
 impl Chapter {
@@ -217,6 +237,48 @@ impl Chapter {
     /// Check if the chapter is a draft chapter, meaning it has no path to a source markdown file.
     pub fn is_draft_chapter(&self) -> bool {
         self.path.is_none()
+    }
+
+    #[cfg(feature = "frontmatter")]
+    /// Remove frontmatter from content and add to Self.
+    pub fn process_frontmatter(&mut self) {
+        // pattern to find frontmatter
+        let regex = regex::Regex::new(r"(?s)\n\+\+\+(.*?)\+\+\+\n").unwrap();
+        if let Some(caps) = regex.captures(&self.content) {
+            if let Some(matched) = caps.get(0) {
+                // Extract the frontmatter between "+++" and update self
+                let frontmatter = self.create_frontmatter_key_values(matched.as_str());
+                self.frontmatter = frontmatter;
+
+                // Remove the frontmatter from the original content
+                let clean_content = regex.replace_all(&self.content, "").to_string();
+                self.content = clean_content;
+            }
+        }
+    }
+
+    #[cfg(feature = "frontmatter")]
+    /// Create key/values for frontmatter by splitting ":" and trimming whitespace.
+    ///
+    /// Use a `Vec` so the order is preserved.
+    fn create_frontmatter_key_values(
+        &self,
+        frontmatter_text: &str,
+    ) -> std::collections::HashMap<String, String> {
+        let split_frontmatter: Vec<&str> = frontmatter_text.split("\n").collect();
+        split_frontmatter
+            .iter()
+            .filter_map(|line| {
+                // separate by colon + space
+                let parts: Vec<_> = line.splitn(2, ':').collect();
+
+                if parts.len() == 2 {
+                    Some((parts[0].trim().to_string(), parts[1].trim().to_string()))
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
@@ -310,6 +372,9 @@ fn load_chapter<P: AsRef<Path>>(
         .collect::<Result<Vec<_>>>()?;
 
     ch.sub_items = sub_items;
+
+    #[cfg(feature = "frontmatter")]
+    ch.process_frontmatter();
 
     Ok(ch)
 }
@@ -458,7 +523,8 @@ And here is some \
             source_path: Some(PathBuf::from("second.md")),
             parent_names: vec![String::from("Chapter 1")],
             sub_items: Vec::new(),
-            data: serde_json::Map::new(),
+            #[cfg(feature = "frontmatter")]
+            frontmatter: Default::default(),
         };
         let should_be = BookItem::Chapter(Chapter {
             name: String::from("Chapter 1"),
@@ -472,7 +538,8 @@ And here is some \
                 BookItem::Separator,
                 BookItem::Chapter(nested),
             ],
-            data: serde_json::Map::new(),
+            #[cfg(feature = "frontmatter")]
+            frontmatter: Default::default(),
         });
 
         let got = load_summary_item(&SummaryItem::Link(root), temp.path(), Vec::new()).unwrap();
@@ -549,7 +616,8 @@ And here is some \
                             Vec::new(),
                         )),
                     ],
-                    data: serde_json::Map::new(),
+                    #[cfg(feature = "frontmatter")]
+                    frontmatter: Default::default(),
                 }),
                 BookItem::Separator,
             ],
@@ -603,7 +671,8 @@ And here is some \
                             Vec::new(),
                         )),
                     ],
-                    data: serde_json::Map::new(),
+                    #[cfg(feature = "frontmatter")]
+                    frontmatter: Default::default(),
                 }),
                 BookItem::Separator,
             ],
@@ -652,5 +721,79 @@ And here is some \
 
         let got = load_book_from_disk(&summary, temp.path());
         assert!(got.is_err());
+    }
+
+    #[test]
+    #[cfg(feature = "frontmatter")]
+    fn test_frontmatter_for_chapter() {
+        let mut content = String::from(DUMMY_SRC);
+
+        // test vars for asserting later
+        let key1 = "frontmatter";
+        let val1 = "here";
+        let key2 = "data";
+        let val2 = "2024-08-02";
+        let key3 = "author";
+        let val3 = "grant";
+        let frontmatter = format!(
+            "
++++
+{}: {}
+{}: {}
+{}: {}
++++", // close quote here to prevent extra \n
+            key1, val1, key2, val2, key3, val3,
+        );
+
+        // add frontmatter to beginning of content
+        content.insert_str(0, frontmatter.as_str());
+
+        let mut book = Book {
+            sections: vec![
+                BookItem::Chapter(Chapter {
+                    name: String::from("Chapter 1"),
+                    content,
+                    number: None,
+                    path: Some(PathBuf::from("Chapter_1/index.md")),
+                    source_path: Some(PathBuf::from("Chapter_1/index.md")),
+                    parent_names: Vec::new(),
+                    sub_items: vec![
+                        BookItem::Chapter(Chapter::new(
+                            "Hello World",
+                            String::new(),
+                            "Chapter_1/hello.md",
+                            Vec::new(),
+                        )),
+                        BookItem::Separator,
+                        BookItem::Chapter(Chapter::new(
+                            "Goodbye World",
+                            String::new(),
+                            "Chapter_1/goodbye.md",
+                            Vec::new(),
+                        )),
+                    ],
+                    frontmatter: std::collections::HashMap::from([(
+                        "test-key".to_string(),
+                        "test-value".to_string(),
+                    )]),
+                }),
+                BookItem::Separator,
+            ],
+            ..Default::default()
+        };
+
+        // book.for_each_mut(|ch| visited += 1);
+        book.for_each_mut(|item| {
+            if let BookItem::Chapter(chapter) = item {
+                chapter.process_frontmatter();
+            }
+        });
+
+        // assert frontmatter key/values
+        if let Some(BookItem::Chapter(chapter)) = book.sections.first() {
+            assert_eq!(chapter.frontmatter[key1], val1);
+            assert_eq!(chapter.frontmatter[key2], val2);
+            assert_eq!(chapter.frontmatter[key3], val3);
+        }
     }
 }

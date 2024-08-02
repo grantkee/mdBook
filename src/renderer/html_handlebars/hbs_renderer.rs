@@ -107,7 +107,9 @@ impl HtmlHandlebars {
             ctx.data
                 .insert("section".to_owned(), json!(section.to_string()));
         }
-        ctx.data.insert("data".to_owned(), json!(ch.data));
+        #[cfg(feature = "frontmatter")]
+        ctx.data
+            .insert("frontmatter".to_owned(), json!(ch.frontmatter));
 
         // Render the handlebars template with the data
         debug!("Render template");
