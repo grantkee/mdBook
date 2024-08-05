@@ -198,7 +198,7 @@ pub struct Chapter {
     /// # Header for Chapter
     /// ```
     #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub frontmatter: Option<std::collections::HashMap<String, String>>,
+    pub frontmatter: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 impl Chapter {
@@ -240,13 +240,17 @@ impl Chapter {
 
     #[cfg(feature = "frontmatter")]
     /// Remove frontmatter from content and add to Self.
-    pub fn process_frontmatter(&self) -> Option<std::collections::HashMap<String, String>> {
+    pub fn process_frontmatter(&self) -> Option<serde_json::Map<String, serde_json::Value>> {
         // pattern to find frontmatter
+        // println!("\n{:?}", self.content);
+        // TODO: do not use unwrap here
         let regex = regex::Regex::new(r"(?s)\n\+\+\+(.*?)\+\+\+\n").unwrap();
         if let Some(caps) = regex.captures(&self.content) {
             if let Some(matched) = caps.get(0) {
+                println!("regex match! creating frontmatter..\n{:?}", self.content);
                 // Extract the frontmatter between "+++" and update self
                 let frontmatter = self.create_frontmatter_key_values(matched.as_str());
+                println!("created key values: {:?}", frontmatter);
                 // self.frontmatter = frontmatter;
                 return Some(frontmatter);
 
@@ -266,21 +270,29 @@ impl Chapter {
     fn create_frontmatter_key_values(
         &self,
         frontmatter_text: &str,
-    ) -> std::collections::HashMap<String, String> {
+    ) -> serde_json::Map<String, serde_json::Value> {
         let split_frontmatter: Vec<&str> = frontmatter_text.split("\n").collect();
-        split_frontmatter
+        println!("here !!!!, {:?}", split_frontmatter);
+        let new = split_frontmatter
             .iter()
             .filter_map(|line| {
                 // separate by colon + space
                 let parts: Vec<_> = line.splitn(2, ':').collect();
 
                 if parts.len() == 2 {
-                    Some((parts[0].trim().to_string(), parts[1].trim().to_string()))
+                    println!("trying json...");
+                    Some((
+                        parts[0].trim().to_string(),
+                        serde_json::json!(parts[1].trim().to_string()),
+                    ))
                 } else {
                     None
                 }
             })
-            .collect()
+            .collect();
+
+        println!("here !!!!, {:?}", new);
+        new
     }
 }
 
@@ -376,7 +388,10 @@ fn load_chapter<P: AsRef<Path>>(
     ch.sub_items = sub_items;
 
     #[cfg(feature = "frontmatter")]
-    ch.process_frontmatter();
+    {
+        ch.frontmatter = ch.process_frontmatter();
+        println!("added frontmatter: {:?}", ch.frontmatter);
+    }
 
     Ok(ch)
 }

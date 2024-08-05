@@ -54,24 +54,7 @@ impl HtmlHandlebars {
                 .insert("git_repository_edit_url".to_owned(), json!(edit_url));
         }
 
-        // Capture frontmatter into ctx.data without overwriting existing keys
-        #[cfg(feature = "frontmatter")]
-        if let Some(frontmatter) = &ch.frontmatter {
-            for (key, value) in frontmatter {
-                println!("\n\n!!!!!\n{key} - {value}\n!!!!!\n\n");
-                ctx.data.entry(key).or_insert(json!(value));
-            }
-        }
-        #[cfg(feature = "frontmatter")]
-        println!("sanity check???:\n{:?}", ctx.data);
-
-        println!("\n!!chapter!!\n{:?}", ch);
-        // println!("\n\n~~~~~~pre-render:\n{}\n~~~~~~~~pre is done", ch.content);
         let content = utils::render_markdown(&ch.content, ctx.html_config.smart_punctuation());
-        // println!(
-        //     "\n\n~~~~~~rendered markdown:\n{}\n~~~~~~~~cmark rendering done",
-        //     content
-        // );
 
         let fixed_content = utils::render_markdown_with_path(
             &ch.content,
@@ -511,6 +494,8 @@ impl Renderer for HtmlHandlebars {
         let book = &ctx.book;
         let build_dir = ctx.root.join(&ctx.config.build.build_dir);
 
+        println!("\n handlebars renderer :D");
+
         if destination.exists() {
             utils::fs::remove_dir_content(destination)
                 .with_context(|| "Unable to remove stale HTML output")?;
@@ -633,6 +618,7 @@ fn make_data(
     theme: &Theme,
 ) -> Result<serde_json::Map<String, serde_json::Value>> {
     trace!("make_data");
+    println!("&&&&&&& inside make data");
 
     let mut data = serde_json::Map::new();
     data.insert(
@@ -758,6 +744,8 @@ fn make_data(
     };
     data.insert("git_repository_icon".to_owned(), json!(git_repository_icon));
 
+    println!("inserted all data, looping through chapters...");
+
     let mut chapters = vec![];
 
     for item in book.iter() {
@@ -769,6 +757,7 @@ fn make_data(
                 chapter.insert("part".to_owned(), json!(title));
             }
             BookItem::Chapter(ref ch) => {
+                println!("chapter found!");
                 if let Some(ref section) = ch.number {
                     chapter.insert("section".to_owned(), json!(section.to_string()));
                 }
@@ -786,12 +775,16 @@ fn make_data(
                     chapter.insert("path".to_owned(), json!(p));
                 }
 
+                println!("inserting frontmatter...");
+                #[cfg(feature = "frontmatter")]
+                println!("ch process: {:?}", ch.process_frontmatter());
                 #[cfg(feature = "frontmatter")]
                 if let Some(ref frontmatter) = ch.process_frontmatter() {
                     println!("\n\nfrontmatter???? {:?}\n\n", frontmatter);
                     let new_json = json!(frontmatter);
                     println!("new json: {:?}", new_json);
                     chapter.insert("frontmatter".to_owned(), new_json);
+                    println!("frontmatter inserted :D");
                 }
             }
             BookItem::Separator => {
