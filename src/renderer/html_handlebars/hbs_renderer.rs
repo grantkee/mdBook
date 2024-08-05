@@ -54,7 +54,24 @@ impl HtmlHandlebars {
                 .insert("git_repository_edit_url".to_owned(), json!(edit_url));
         }
 
+        // Capture frontmatter into ctx.data without overwriting existing keys
+        #[cfg(feature = "frontmatter")]
+        if let Some(frontmatter) = &ch.frontmatter {
+            for (key, value) in frontmatter {
+                println!("\n\n!!!!!\n{key} - {value}\n!!!!!\n\n");
+                ctx.data.entry(key).or_insert(json!(value));
+            }
+        }
+        #[cfg(feature = "frontmatter")]
+        println!("sanity check???:\n{:?}", ctx.data);
+
+        println!("\n!!chapter!!\n{:?}", ch);
+        // println!("\n\n~~~~~~pre-render:\n{}\n~~~~~~~~pre is done", ch.content);
         let content = utils::render_markdown(&ch.content, ctx.html_config.smart_punctuation());
+        // println!(
+        //     "\n\n~~~~~~rendered markdown:\n{}\n~~~~~~~~cmark rendering done",
+        //     content
+        // );
 
         let fixed_content = utils::render_markdown_with_path(
             &ch.content,
@@ -107,9 +124,6 @@ impl HtmlHandlebars {
             ctx.data
                 .insert("section".to_owned(), json!(section.to_string()));
         }
-        #[cfg(feature = "frontmatter")]
-        ctx.data
-            .insert("frontmatter".to_owned(), json!(ch.frontmatter));
 
         // Render the handlebars template with the data
         debug!("Render template");
@@ -770,6 +784,14 @@ fn make_data(
                         .to_str()
                         .with_context(|| "Could not convert path to str")?;
                     chapter.insert("path".to_owned(), json!(p));
+                }
+
+                #[cfg(feature = "frontmatter")]
+                if let Some(ref frontmatter) = ch.process_frontmatter() {
+                    println!("\n\nfrontmatter???? {:?}\n\n", frontmatter);
+                    let new_json = json!(frontmatter);
+                    println!("new json: {:?}", new_json);
+                    chapter.insert("frontmatter".to_owned(), new_json);
                 }
             }
             BookItem::Separator => {

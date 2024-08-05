@@ -197,8 +197,8 @@ pub struct Chapter {
     /// +++
     /// # Header for Chapter
     /// ```
-    #[serde(skip_serializing_if = "std::collections::HashMap::is_empty", default)]
-    pub frontmatter: std::collections::HashMap<String, String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub frontmatter: Option<std::collections::HashMap<String, String>>,
 }
 
 impl Chapter {
@@ -240,20 +240,23 @@ impl Chapter {
 
     #[cfg(feature = "frontmatter")]
     /// Remove frontmatter from content and add to Self.
-    pub fn process_frontmatter(&mut self) {
+    pub fn process_frontmatter(&self) -> Option<std::collections::HashMap<String, String>> {
         // pattern to find frontmatter
         let regex = regex::Regex::new(r"(?s)\n\+\+\+(.*?)\+\+\+\n").unwrap();
         if let Some(caps) = regex.captures(&self.content) {
             if let Some(matched) = caps.get(0) {
                 // Extract the frontmatter between "+++" and update self
                 let frontmatter = self.create_frontmatter_key_values(matched.as_str());
-                self.frontmatter = frontmatter;
+                // self.frontmatter = frontmatter;
+                return Some(frontmatter);
 
-                // Remove the frontmatter from the original content
-                let clean_content = regex.replace_all(&self.content, "").to_string();
-                self.content = clean_content;
+                // // Remove the frontmatter from the original content
+                // let clean_content = regex.replace_all(&self.content, "").to_string();
+                // self.content = clean_content;
             }
         }
+        // return empty HashMap if nothing included
+        None
     }
 
     #[cfg(feature = "frontmatter")]

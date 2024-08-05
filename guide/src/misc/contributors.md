@@ -1,3 +1,6 @@
++++
+turtles: TuuuurtleS!!!
++++
 # Contributors
 
 Here is a list of the contributors who have helped improving mdBook. Big
@@ -20,6 +23,7 @@ shout-out to them!
 - Vivek Akupatni ([apatniv](https://github.com/apatniv))
 - Eric Huss ([ehuss](https://github.com/ehuss))
 - Josh Rotenberg ([joshrotenberg](https://github.com/joshrotenberg))
+- TODO: add co-author
 - Grant Kee ([grantkee](https://github.com/grantkee))
 
 If you feel you're missing from this list, feel free to add yourself in a PR.

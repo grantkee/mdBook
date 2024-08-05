@@ -37,6 +37,16 @@ Here is a list of the properties that are exposed:
   ```
   containing all the chapters of the book. It is used for example to construct
   the table of contents (sidebar).
+- ***frontmatter*** (*feature flag only*) Any file can include an optional block with key/value pairs between the delimiters "+++". Key/value pairs must be on separate lines and separated by a colon (":"). Here is a basic example to expose "date" and "layout" in the frontmatter property:
+```markdown
++++
+date: "08-02-2024"
+layout: landing
++++
+# My Header
+Other stuff down here...
+```
+NOTE: frontmatter is only included with mdbook's `frontmatter` feature. See [installation guide](./../guide/installation.md) for help enabling this feature.
 
 ## Handlebars Helpers
 

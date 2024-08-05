@@ -204,6 +204,8 @@ pub fn new_cmark_parser(text: &str, smart_punctuation: bool) -> Parser<'_> {
     if smart_punctuation {
         opts.insert(Options::ENABLE_SMART_PUNCTUATION);
     }
+    #[cfg(feature = "frontmatter")]
+    opts.insert(Options::ENABLE_PLUSES_DELIMITED_METADATA_BLOCKS);
     Parser::new_ext(text, opts)
 }
 
