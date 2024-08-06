@@ -40,8 +40,14 @@ impl Preprocessor for IndexPreprocessor {
                         path.set_file_name("index.md");
                     }
                 }
+
+                // add frontmatter to chapter and clean content
+                #[cfg(feature = "frontmatter")]
+                ch.process_frontmatter();
             }
         });
+        #[cfg(feature = "frontmatter")]
+        println!("make it here?");
 
         Ok(book)
     }

@@ -166,6 +166,7 @@ fn render(
         .ok_or_else(|| RenderErrorReason::Other("Error with the handlebars template".to_owned()))?;
     let local_ctx = Context::wraps(&context)?;
     let mut local_rc = rc.clone();
+    println!("navigation renderer?");
     t.render(r, &local_ctx, &mut local_rc, out)
 }
 

@@ -222,6 +222,7 @@ impl MDBook {
     /// Run the entire build process for a particular [`Renderer`].
     pub fn execute_build_process(&self, renderer: &dyn Renderer) -> Result<()> {
         let (preprocessed_book, preprocess_ctx) = self.preprocess_book(renderer)?;
+        println!("preprocessed_book:\n{:?}", preprocessed_book);
 
         let name = renderer.name();
         let build_dir = self.build_dir_for(name);

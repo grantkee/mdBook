@@ -35,6 +35,7 @@ impl Renderer for MarkdownRenderer {
         for item in book.iter() {
             if let BookItem::Chapter(ref ch) = *item {
                 if !ch.is_draft_chapter() {
+                    println!("markdown renderer??\n{:?}", ch);
                     utils::fs::write_file(
                         &ctx.destination,
                         ch.path.as_ref().expect("Checked path exists before"),

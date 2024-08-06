@@ -107,12 +107,15 @@ impl HtmlHandlebars {
             ctx.data
                 .insert("section".to_owned(), json!(section.to_string()));
         }
-        #[cfg(feature = "frontmatter")]
-        ctx.data
-            .insert("frontmatter".to_owned(), json!(ch.frontmatter));
 
         // Render the handlebars template with the data
         debug!("Render template");
+        #[cfg(feature = "frontmatter")]
+        println!("!!ch.frontmatter: {:?}", ch.frontmatter);
+        #[cfg(feature = "frontmatter")]
+        println!("!!ctx.frontmatter: {:?}", ctx.data.get("frontmatter"));
+
+        println!("\n~~~~ctx data pre-render:\n{:?}\n", ctx.data);
         let rendered = ctx.handlebars.render("index", &ctx.data)?;
 
         let rendered = self.post_process(
@@ -130,6 +133,7 @@ impl HtmlHandlebars {
             ctx.data.insert("path".to_owned(), json!("index.md"));
             ctx.data.insert("path_to_root".to_owned(), json!(""));
             ctx.data.insert("is_index".to_owned(), json!(true));
+            println!("\n\nctx data is_index??\n{:?}", ctx.data);
             let rendered_index = ctx.handlebars.render("index", &ctx.data)?;
             let rendered_index = self.post_process(
                 rendered_index,
@@ -497,6 +501,8 @@ impl Renderer for HtmlHandlebars {
         let book = &ctx.book;
         let build_dir = ctx.root.join(&ctx.config.build.build_dir);
 
+        println!("\n handlebars renderer :D");
+
         if destination.exists() {
             utils::fs::remove_dir_content(destination)
                 .with_context(|| "Unable to remove stale HTML output")?;
@@ -618,6 +624,7 @@ fn make_data(
     html_config: &HtmlConfig,
     theme: &Theme,
 ) -> Result<serde_json::Map<String, serde_json::Value>> {
+    println!("make data");
     trace!("make_data");
 
     let mut data = serde_json::Map::new();
@@ -744,6 +751,8 @@ fn make_data(
     };
     data.insert("git_repository_icon".to_owned(), json!(git_repository_icon));
 
+    println!("inserted all data, looping through chapters...");
+
     let mut chapters = vec![];
 
     for item in book.iter() {
@@ -770,6 +779,24 @@ fn make_data(
                         .to_str()
                         .with_context(|| "Could not convert path to str")?;
                     chapter.insert("path".to_owned(), json!(p));
+                }
+
+                #[cfg(feature = "frontmatter")]
+                if !ch.frontmatter.is_empty() {
+                    println!("ch.frontmatter: {:?}", ch.frontmatter);
+                }
+                // #[cfg(feature = "frontmatter")]
+                // // add frontmatter to data without overwriting existing keys
+                // chapter.insert("frontmatter".to_owned(), json!(ch.frontmatter.clone()));
+
+                #[cfg(feature = "frontmatter")]
+                // for (k, v) in &ch.frontmatter {
+                //     println!("trying to add to data: {:?}-{:?}", k, v);
+                //     chapter.entry(k.to_owned()).or_insert(json!(v));
+                // }
+                #[cfg(feature = "frontmatter")]
+                if !ch.frontmatter.is_empty() {
+                    println!("chapter in hbs renderer after:\n{:?}", chapter);
                 }
             }
             BookItem::Separator => {

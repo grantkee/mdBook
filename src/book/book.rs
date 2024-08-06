@@ -11,6 +11,11 @@ use crate::utils::bracket_escape;
 use log::debug;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "frontmatter")]
+const FRONTMATTER_REGEX: &'static str = r##"(?s)^\n?\+\+\+(.*?)\n\+\+\+"##;
+#[cfg(feature = "frontmatter")]
+use once_cell::sync::Lazy;
+
 /// Load a book into memory from its `src/` directory.
 pub fn load_book<P: AsRef<Path>>(src_dir: P, cfg: &BuildConfig) -> Result<Book> {
     let src_dir = src_dir.as_ref();
@@ -242,18 +247,55 @@ impl Chapter {
     /// Remove frontmatter from content and add to Self.
     pub fn process_frontmatter(&mut self) {
         // pattern to find frontmatter
-        let regex = regex::Regex::new(r"(?s)\n\+\+\+(.*?)\+\+\+\n").unwrap();
-        if let Some(caps) = regex.captures(&self.content) {
-            if let Some(matched) = caps.get(0) {
-                // Extract the frontmatter between "+++" and update self
-                let frontmatter = self.create_frontmatter_key_values(matched.as_str());
-                self.frontmatter = frontmatter;
+        println!("\nprocessing{:?}", self.name);
+        // TODO: don't use unwrap here
+        // let regex = regex::Regex::new(r"(?s)\n\+\+\+(.*?)\+\+\+\n").unwrap();
 
-                // Remove the frontmatter from the original content
-                let clean_content = regex.replace_all(&self.content, "").to_string();
-                self.content = clean_content;
+        // let regex = regex::Regex::new(r"^\+\+\+(.*?)\+\+\+\n").unwrap();
+        // let regex = regex::Regex::new(r"^\n?+++(.*?)\n+++").unwrap();
+
+        // create
+        // https://docs.rs/regex/1.8.1/regex/index.html#example-avoid-compiling-the-same-regex-in-a-loop
+
+        static REGEX: Lazy<regex::Regex> =
+            Lazy::new(|| regex::Regex::new(FRONTMATTER_REGEX).expect("regex expression valid"));
+        // let regex = regex::Regex::new(r"(?s)^\n?\+\+\+(.*?)\n\+\+\+").unwrap();
+
+        if let Some(capture) = REGEX.captures(&self.content) {
+            if let Some(matched) = capture.get(1) {
+                // Create and set frontmatter from the captured content
+                self.frontmatter = self.create_frontmatter_key_values(matched.as_str());
+
+                // Clean content to remove frontmatter for rendering
+                self.content = REGEX.replace_all(&self.content, "").to_string();
             }
         }
+
+        // println!("regex??");
+        // REGEX.captures(&content).and_then(|caps| {
+        //     caps.get(1).map(|matched| {
+        //         // match_.as_str().trim().to_string()
+        //         self.frontmatter = self.create_frontmatter_key_values(matched.as_str());
+
+        //         // clean content to remove frontmatter
+        //         self.content = REGEX.replace_all(&self.content, "").to_string();
+        //     })
+        // });
+
+        // if let Some(caps) = regex.captures(&self.content) {
+        //     println!("some caps?");
+        //     if let Some(matched) = caps.get(0) {
+        //         println!("captured??{:?}", matched);
+        //         // Extract the frontmatter between "+++" and update self
+        //         let frontmatter = self.create_frontmatter_key_values(matched.as_str());
+        //         println!("\n\n~~~~~processing frontmatter: {:?}", frontmatter);
+        //         self.frontmatter = frontmatter;
+
+        //         // Remove the frontmatter from the original content
+        //         let clean_content = regex.replace_all(&self.content, "").to_string();
+        //         self.content = clean_content;
+        //     }
+        // }
     }
 
     #[cfg(feature = "frontmatter")]
@@ -794,5 +836,118 @@ And here is some \
             assert_eq!(chapter.frontmatter[key2], val2);
             assert_eq!(chapter.frontmatter[key3], val3);
         }
+    }
+
+    #[test]
+    #[cfg(feature = "frontmatter")]
+    fn test_regex_works() {
+        let input = r##"
++++
+turtles: Turtles!!!
++++
+# Contributors
+
+Here is a list of the contributors who have helped improving mdBook. Big
+shout-out to them!
+
+- [mdinger](https://github.com/mdinger)
+- Kevin ([kbknapp](https://github.com/kbknapp))
+- Steve Klabnik ([steveklabnik](https://github.com/steveklabnik))
+- Adam Solove ([asolove](https://github.com/asolove))
+- Wayne Nilsen ([waynenilsen](https://github.com/waynenilsen))
+- [funnkill](https://github.com/funkill)
+- Fu Gangqiang ([FuGangqiang](https://github.com/FuGangqiang))
+- [Michael-F-Bryan](https://github.com/Michael-F-Bryan)
+- Chris Spiegel ([cspiegel](https://github.com/cspiegel))
+- [projektir](https://github.com/projektir)
+- [Phaiax](https://github.com/Phaiax)
+- Matt Ickstadt ([mattico](https://github.com/mattico))
+- Weihang Lo ([weihanglo](https://github.com/weihanglo))
+- Avision Ho ([avisionh](https://github.com/avisionh))
+- Vivek Akupatni ([apatniv](https://github.com/apatniv))
+- Eric Huss ([ehuss](https://github.com/ehuss))
+- Josh Rotenberg ([joshrotenberg](https://github.com/joshrotenberg))
+- Grant Kee ([grantkee](https://github.com/grantkee))
+
+If you feel you're missing from this list, feel free to add yourself in a PR.
+"##;
+
+        let input_no_linebreak = r##"+++
+turtles: Turtles!!!
++++
+# Contributors
+
+Here is a list of the contributors who have helped improving mdBook. Big
+shout-out to them!
+
+- [mdinger](https://github.com/mdinger)
+- Kevin ([kbknapp](https://github.com/kbknapp))
+- Steve Klabnik ([steveklabnik](https://github.com/steveklabnik))
+- Adam Solove ([asolove](https://github.com/asolove))
+- Wayne Nilsen ([waynenilsen](https://github.com/waynenilsen))
+- [funnkill](https://github.com/funkill)
+- Fu Gangqiang ([FuGangqiang](https://github.com/FuGangqiang))
+- [Michael-F-Bryan](https://github.com/Michael-F-Bryan)
+- Chris Spiegel ([cspiegel](https://github.com/cspiegel))
+- [projektir](https://github.com/projektir)
+- [Phaiax](https://github.com/Phaiax)
+- Matt Ickstadt ([mattico](https://github.com/mattico))
+- Weihang Lo ([weihanglo](https://github.com/weihanglo))
+- Avision Ho ([avisionh](https://github.com/avisionh))
+- Vivek Akupatni ([apatniv](https://github.com/apatniv))
+- Eric Huss ([ehuss](https://github.com/ehuss))
+- Josh Rotenberg ([joshrotenberg](https://github.com/joshrotenberg))
+- Grant Kee ([grantkee](https://github.com/grantkee))
+
+If you feel you're missing from this list, feel free to add yourself in a PR.
+"##;
+        let invalid_frontmatter = r##"
+# Contributors
++++
+turtles: Turtles!!!
++++
+
+Here is a list of the contributors who have helped improving mdBook. Big
+shout-out to them!
+
+- [mdinger](https://github.com/mdinger)
+- Kevin ([kbknapp](https://github.com/kbknapp))
+- Steve Klabnik ([steveklabnik](https://github.com/steveklabnik))
+- Adam Solove ([asolove](https://github.com/asolove))
+- Wayne Nilsen ([waynenilsen](https://github.com/waynenilsen))
+- [funnkill](https://github.com/funkill)
+- Fu Gangqiang ([FuGangqiang](https://github.com/FuGangqiang))
+- [Michael-F-Bryan](https://github.com/Michael-F-Bryan)
+- Chris Spiegel ([cspiegel](https://github.com/cspiegel))
+- [projektir](https://github.com/projektir)
+- [Phaiax](https://github.com/Phaiax)
+- Matt Ickstadt ([mattico](https://github.com/mattico))
+- Weihang Lo ([weihanglo](https://github.com/weihanglo))
+- Avision Ho ([avisionh](https://github.com/avisionh))
+- Vivek Akupatni ([apatniv](https://github.com/apatniv))
+- Eric Huss ([ehuss](https://github.com/ehuss))
+- Josh Rotenberg ([joshrotenberg](https://github.com/joshrotenberg))
+- Grant Kee ([grantkee](https://github.com/grantkee))
+
+If you feel you're missing from this list, feel free to add yourself in a PR.
+"##;
+
+        // regex to match
+        let regex = regex::Regex::new(FRONTMATTER_REGEX).unwrap();
+
+        // assert input with linebreak and no linebreak are both captured
+        let input_captured = regex
+            .captures(input)
+            .and_then(|caps| caps.get(1).map(|match_| match_.as_str().trim()));
+
+        let input_no_linebreak_captured = regex
+            .captures(input_no_linebreak)
+            .and_then(|caps| caps.get(1).map(|match_| match_.as_str().trim()));
+
+        assert_eq!(input_captured, input_no_linebreak_captured);
+        assert_eq!(input_captured, Some("turtles: Turtles!!!"));
+
+        let invalid_frontmatter_captured = regex.captures(invalid_frontmatter);
+        assert!(invalid_frontmatter_captured.is_none());
     }
 }
